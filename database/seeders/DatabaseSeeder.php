@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -11,7 +12,21 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Menyiapkan 3 Kategori
+        // =========================================================================
+        // 1. Pembuatan Akun Admin Utama (PENTING: Menghindari Error Kolom 'role')
+        // =========================================================================
+        \App\Models\User::firstOrCreate(
+            ['email' => 'admin@amikom.ac.id'], // Validasi keunikan berdasarkan email
+            [
+                'name' => 'Admin Amikom',
+                'password' => Hash::make('password'), // Enkripsi password secara aman
+                'role' => 'admin',
+            ]
+        );
+
+        // =========================================================================
+        // 2. Menyiapkan 3 Kategori Utama
+        // =========================================================================
         $cat1 = \App\Models\Category::firstOrCreate([
             'name' => 'Teknologi',
             'slug' => 'teknologi',
@@ -27,7 +42,11 @@ class DatabaseSeeder extends Seeder
             'slug' => 'desain',
         ]);
 
-        // 2. Menanamkan 6 Data Event secara logis dan bervariatif
+        // =========================================================================
+        // 3. Menanamkan 6 Data Event Secara Logis dan Bervariatif
+        // =========================================================================
+        
+        // --- KATEGORI: TEKNOLOGI ---
         \App\Models\Event::create([
             'category_id' => $cat1->id,
             'title' => 'Web Development Bootcamp 2026',
@@ -50,6 +69,7 @@ class DatabaseSeeder extends Seeder
             'poster_path' => 'posters/ai-summit.png',
         ]);
 
+        // --- KATEGORI: E-SPORTS ---
         \App\Models\Event::create([
             'category_id' => $cat2->id,
             'title' => 'Amikom E-Sport U-Champ: Mobile Legends',
@@ -72,6 +92,7 @@ class DatabaseSeeder extends Seeder
             'poster_path' => 'posters/valo-league.png',
         ]);
 
+        // --- KATEGORI: DESAIN ---
         \App\Models\Event::create([
             'category_id' => $cat3->id,
             'title' => 'UI/UX Masterclass: Designing for Humans',
