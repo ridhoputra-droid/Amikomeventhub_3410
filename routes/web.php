@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\EventController;
 use App\Http\Controllers\Admin\CategoryController; 
+use App\Http\Controllers\Admin\TransactionsController;
+use App\Http\Controllers\CheckoutController;
 use App\Models\Event;
 
 /*
@@ -20,26 +22,24 @@ Route::get('/', function () {
     $events = Event::with('category')->get(); 
     $partners = collect([]); 
     return view('welcome', compact('events', 'partners')); 
-});
+})->name('home');
 
-// TAMBAHKAN RUTE INI: Rute untuk melihat detail event berdasarkan ID
 Route::get('/event-detail/{id}', function ($id) {
-    // Mencari data event berdasarkan ID beserta kategorinya, jika tidak ketemu akan otomatis 404
     $event = Event::with('category')->findOrFail($id);
-    
-    // Mengembalikan view detail event (pastikan Anda sudah punya file event-detail.blade.php)
     return view('event-detail', compact('event'));
 })->name('event.detail');
 
+// Rute Checkout (Publik)
+Route::get('/checkout/{event}', [CheckoutController::class, 'create'])->name('checkout.create');
+Route::post('/checkout/{event}', [CheckoutController::class, 'store'])->name('checkout.store');
 
 // ==========================================
-// RUTE AUTENTIKASI ADMIN (LOGIN / LOGOUT)
+// RUTE AUTENTIKASI ADMIN
 // ==========================================
 
-Route::get('/admin/login', [AuthController::class, 'showLogin'])->name('admin.login');
+Route::get('/admin/login', [AuthController::class, 'showLogin'])->name('login'); // Diubah jadi name('login') agar tidak error
 Route::post('/admin/login', [AuthController::class, 'login']);
 Route::post('/admin/logout', [AuthController::class, 'logout'])->name('admin.logout');
-
 
 // ==========================================
 // RUTE PROTECTIONS ADMIN (WAJIB LOGIN)
@@ -47,7 +47,6 @@ Route::post('/admin/logout', [AuthController::class, 'logout'])->name('admin.log
 
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     
-    // Halaman Utama Dashboard Admin
     Route::get('/dashboard', function() {
         $events = Event::with('category')->get(); 
         
@@ -67,11 +66,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         )); 
     })->name('dashboard');
 
-    // Rute bayangan sidebar agar tidak crash
-    Route::get('/transactions', function() {
-        return "Halaman Data Transaksi (Modul Selanjutnya)";
-    })->name('transactions');
+    // Rute Transaksi
+    Route::get('/transactions', [TransactionsController::class, 'index'])->name('transactions.index');
 
+    // Rute Partners
     Route::get('/partners', function() {
         return "Halaman Manajemen Partners (Modul Selanjutnya)";
     })->name('partners');

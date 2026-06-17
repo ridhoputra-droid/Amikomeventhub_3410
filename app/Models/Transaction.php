@@ -7,18 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 class Transaction extends Model
 {
     protected $fillable = [
-        'event_id',
         'order_id',
+        'event_id',
         'customer_name',
         'customer_email',
         'customer_phone',
         'total_price',
-        'status',
-        'snap_token',
+        'status'
     ];
 
     public function event()
     {
-        return $this->belongsTo(Event::class);
+        return $this->belongsTo(Event::class, 'event_id');
     }
 }

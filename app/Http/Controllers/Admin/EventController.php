@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -12,20 +13,16 @@ class EventController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request) // Tambahkan Request $request di sini
+    public function index(Request $request)
     {
-        // 1. Ambil kata kunci pencarian dari input URL
         $search = $request->input('search');
 
-        // 2. Ambil data event dengan filter pencarian jika ada keyword
-        // Ditambahkan juga with('category') agar query lebih cepat (mencegah N+1 issue)
-        $events = \App\Models\Event::with('category')
+        $events = Event::with('category')
             ->when($search, function ($query, $search) {
                 return $query->where('title', 'like', '%' . $search . '%');
             })
             ->paginate(10);
 
-        // 3. Masukkan 'search' ke dalam compact agar dikenali oleh Blade
         return view('admin.events.index', compact('events', 'search'));
     }
 
@@ -34,7 +31,7 @@ class EventController extends Controller
      */
     public function create()
     {
-        $categories = \App\Models\Category::all();
+        $categories = Category::all();
         return view('admin.events.create', compact('categories'));
     }
 
@@ -43,32 +40,25 @@ class EventController extends Controller
      */
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'category_id' => 'required',
-            'title' => 'required|string|max:255',
+        // Validasi ketat (harga tidak bisa minus, stok minimal 1)
+        $validatedData = $request->validate([
+            'category_id' => 'required|exists:categories,id',
+            'title'       => 'required|string|max:255',
             'description' => 'required|string',
-            'date' => 'required|date',
-            'location' => 'required|string|max:255',
-            'price' => 'required|numeric',
-            'stock' => 'required|numeric',
-            'poster' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048'
+            'date'        => 'required|date',
+            'location'    => 'required|string|max:255',
+            'price'       => 'required|numeric|min:0',
+            'stock'       => 'required|integer|min:1',
+            'poster'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
         if ($request->hasFile('poster')) {
-            $data['poster_path'] = $request->file('poster')->store('poster', 'public');
+            $validatedData['poster_path'] = $request->file('poster')->store('posters', 'public');
         }
 
-        \App\Models\Event::create($data);
+        Event::create($validatedData);
 
-        return redirect()->route('admin.events.index')->with('success', 'Data Event berhasil ditambahkan.');
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(Event $event)
-    {
-        //
+        return redirect()->route('admin.events.index')->with('success', 'Event berhasil ditambahkan!');
     }
 
     /**
@@ -76,7 +66,7 @@ class EventController extends Controller
      */
     public function edit(Event $event)
     {
-        $categories = \App\Models\Category::all();
+        $categories = Category::all();
         return view('admin.events.edit', compact('event', 'categories'));
     }
 
@@ -85,27 +75,28 @@ class EventController extends Controller
      */
     public function update(Request $request, Event $event)
     {
-        $data = $request->validate([
-            'category_id' => 'required',
-            'title' => 'required|string|max:255',
+        $validatedData = $request->validate([
+            'category_id' => 'required|exists:categories,id',
+            'title'       => 'required|string|max:255',
             'description' => 'required|string',
-            'date' => 'required|date',
-            'location' => 'required|string|max:255',
-            'price' => 'required|numeric',
-            'stock' => 'required|numeric',
-            'poster' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048'
+            'date'        => 'required|date',
+            'location'    => 'required|string|max:255',
+            'price'       => 'required|numeric|min:0',
+            'stock'       => 'required|integer|min:1',
+            'poster'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
+        // Hapus poster lama jika ada poster baru
         if ($request->hasFile('poster')) {
-            if ($event->poster_path) {
+            if ($event->poster_path && Storage::disk('public')->exists($event->poster_path)) {
                 Storage::disk('public')->delete($event->poster_path);
             }
-            $data['poster_path'] = $request->file('poster')->store('poster', 'public');
+            $validatedData['poster_path'] = $request->file('poster')->store('posters', 'public');
         }
 
-        $event->update($data);
+        $event->update($validatedData);
 
-        return redirect()->route('admin.events.index')->with('success', 'Rincian data event berhasil diperbarui.');
+        return redirect()->route('admin.events.index')->with('success', 'Event berhasil diperbarui!');
     }
 
     /**
@@ -113,12 +104,13 @@ class EventController extends Controller
      */
     public function destroy(Event $event)
     {
-        if ($event->poster_path) {
+        // Hapus file gambar dari storage
+        if ($event->poster_path && Storage::disk('public')->exists($event->poster_path)) {
             Storage::disk('public')->delete($event->poster_path);
         }
 
         $event->delete();
 
-        return redirect()->route('admin.events.index')->with('success', 'Data event berhasil dihapus secara permanen.');
+        return redirect()->route('admin.events.index')->with('success', 'Event berhasil dihapus!');
     }
 }
